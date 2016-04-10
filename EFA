@@ -1,0 +1,196 @@
+rm(list=ls())
+#### set-up ####
+install.packages('xlsx')
+install.packages('psych')
+install.packages('GPArotation')
+install.packages('reshape')
+install.packages('polycor')
+install.packages('lavaan')
+install.packages('semPlot')
+library(xlsx)
+library(semPlot)
+library(psych)
+library(GPArotation)
+library(reshape)
+library(polycor)
+library(lavaan)
+
+
+data_tp1 <- read.csv("/Users/ddpeng/Desktop/R/Class_Multivariate_R/MultivariateFinal/FA_ExamData1.csv")
+data_tp2 <- read.csv("/Users/ddpeng/Desktop/R/Class_Multivariate_R/MultivariateFinal/FA_ExamData2.csv")
+#data for request 1#
+wb_tp1 <- data_tp1[, -c(1:32)] 
+wb_tp2 <- data_tp2[, -c(1:32)]
+
+#### data cleaning ####
+
+wb_tp1[,1:29][wb_tp1[,1:29] < 1] <- NA
+wb_tp1[,1:29][wb_tp1[,1:29] > 7] <- NA
+sum(is.na(wb_tp1[,1:29])) # 555
+
+wb_tp2[,1:29][wb_tp2[,1:29] < 1] <- NA
+wb_tp2[,1:29][wb_tp2[,1:29] > 7] <- NA
+sum(is.na(wb_tp2[,1:29])) # 499
+
+#### time point 1 efa ####
+## data check ##
+cor_tp1 <- round(cor(wb_tp1, use = "complete.obs"), digits = 2) 
+lowercor_tp1 <- cor_tp1[lower.tri(cor_tp1)] 
+avcor_tp1 <- mean(abs(lowercor_tp1)) #0.21 - low, but we'll work with it
+
+eigen_tp1 <- eigen(cor_tp1)
+round(eigen_tp1$values, digits = 2)
+
+describe(wb_tp1) #n=1351
+kmo_tp1 <- KMO(wb_tp1)
+
+bartlett_tp1 <- cortest.bartlett(cor_tp1, n=1351) # correlations are significantly different from identity matrix - does not indicate that data is unusable
+bartlett_tp1 # significant results, p < 0.001
+# skew, kurtosis, kmo, correlation matrix, bartlett all look fine upon inspection 
+
+
+
+## number of factors criteria: ##
+# PA (eigenvalue approach), and then MAP and VSS (model fit) #
+parallel_tp1 <- fa.parallel(wb_tp1, fm="ml", fa="fa") #parallel analysis, maximum likelihood, factor analysis
+# parallel analysis suggests 7 factors
+vss(wb_tp1, n = 10, rotate = "none", n.obs = 1351)
+
+vss_tp1 <- vss(wb_tp1, b= 10, rotate = "none", n.obs = 1351)
+plot(vss_tp1$map, type = "b", pch=1, 
+     main="Minimum Average Partial", ylab = "Average Partial Correlation", xlab = "Number of Factors")
+# MAP suggests 2 factors, but the plot is ambiguous b/w 2-4
+plot(parallel_tp1$fa.values, type="b", pch=20, 
+     main="Scree Plot", ylab= "Factor Eigenvalues", xlab="Number of Factors") #the scree plot looks like 4 factors
+parallel_tp1$fa.values #eigen values
+
+#the Scree Plot looks like there are 3, 4, or 5 factors
+
+# factors solutions criteria: #
+# at least 3 items per factor #
+# factor loading above ~ 0.4 #
+# cross loadings below 0.3, but 0.2 gap b/w primary loadings and cross loadings #
+# prioritize simple structure (over var explained) #
+
+
+# testing for simple structure, 3 factors #
+
+fa3 <- fa(wb_tp1, nfactors = 3, rotate = "none", fm = "ml") 
+fa3_oblimin <- fa(wb_tp1, nfactors = 3, rotate = "oblimin", fm = "ml")
+fa3_oblimin2 <- fa(wb_tp1[, -c(25)], nfactors = 3, rotate = "oblimin", fm = "ml") #-wb25
+fa3_oblimin3 <- fa(wb_tp1[, -c(24, 25)], nfactors = 3, rotate = "oblimin", fm = "ml") #-wb24
+fa3_oblimin4 <- fa(wb_tp1[, -c(24, 25, 29)], nfactors = 3, rotate = "oblimin", fm = "ml") #-wb29
+fa3_oblimin5 <- fa(wb_tp1[, -c(24, 25, 29, 17)], nfactors = 3, rotate = "oblimin", fm = "ml") #-wb17
+fa3_oblimin6 <- fa(wb_tp1[, -c(24, 25, 29, 17, 6)], nfactors = 3, rotate = "oblimin", fm = "ml") #-wb6
+#RMSR = 0.04
+#RMSEA = 0.067
+#TLI = 0.85
+#CFI = 0.88
+1 - ((fa3_oblimin6$STATISTIC - fa3_oblimin6$dof)/(fa3_oblimin6$null.chisq - fa3_oblimin6$null.dof))
+
+alpha(wb_tp1[, c(7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21, 23, 27 )]) #raw_alpha = 0.87
+alpha(wb_tp1[, c(1, 2, 3, 4, 5)]) #raw_alpha = 0.83
+alpha(wb_tp1[, c(22, 26, 28)]) #raw_alpha = 0.74 
+
+vss(wb_tp1[, -c(24, 25, 29, 17, 6)], rotate="none", n.obs=1351)
+
+#
+#
+#
+
+
+fa4 <- fa(wb_tp1, nfactors = 4, rotate = "none", fm = "ml")
+fa4_oblimin <- fa(wb_tp1, nfactors = 4, rotate = "oblimin", fm = "ml")
+#no factors: wb6, wb10, wb18, wb29
+fa4_oblimin2 <- fa(wb_tp1[, -c(29)], nfactors = 4, rotate = "oblimin", fm = "ml") 
+fa4_oblimin3 <- fa(wb_tp1[, -c(29, 6)], nfactors = 4, rotate = "oblimin", fm = "ml") 
+
+fa4_oblimin4 <- fa(wb_tp1[, -c(29, 6, 10)], nfactors = 4, rotate = "oblimin", fm = "ml") 
+fa4_oblimin5 <- fa(wb_tp1[, -c(29, 6, 10, 25)], nfactors = 4, rotate = "oblimin", fm = "ml") 
+fa4_oblimin6 <- fa(wb_tp1[, -c(29, 6, 10, 25, 7)], nfactors = 4, rotate = "oblimin", fm = "ml") 
+fa4_oblimin7 <- fa(wb_tp1[, -c(29, 6, 10, 25, 7, 18)], nfactors = 4, rotate = "oblimin", fm = "ml") 
+
+
+cfi1 <- 1 - ((fa4_oblimin7$STATISTIC - fa4_oblimin7$dof)/(fa4_oblimin7$null.chisq - fa4_oblimin7$null.dof))
+
+alpha(wb_tp1[, c(22, 26, 28)]) #raw_alpha = 0.74 
+
+a1.1 <- alpha(wb_tp1[,c(3,5,4,1,2)])
+a2.1 <- alpha(wb_tp1[,c(20, 27, 23,21,8,13,19,12,15,16,11)])
+a3.1 <- alpha(wb_tp1[,c(22,26,28)])
+a4.1 <- alpha(wb_tp1[,c(17,9,24,14)])
+
+#### time point 2 efa ####
+
+## data check ##
+cor_tp2 <- round(cor(wb_tp2, use = "complete.obs"), digits = 2) 
+lowercor_tp2 <- cor_tp2[lower.tri(cor_tp2)] 
+avcor_tp2 <- mean(abs(lowercor_tp2)) #0.22
+
+eigen_tp2 <- eigen(cor_tp2)
+round(eigen_tp2$values, digits = 2)
+
+
+describe(wb_tp2) #n=1028
+kmo_tp2 <- KMO(wb_tp2)
+
+bartlett_tp2 <- cortest.bartlett(cor_tp2, n=1028) # correlations are significantly different from identity matrix - does not indicate that data is unusable
+bartlett_tp2 # significant results, p < 0.001
+# skew, kurtosis, kmo, correlation matrix, bartlett all look fine upon inspection 
+
+## number of factors criteria: ##
+# PA (eigenvalue approach), and then MAP and VSS (model fit) #
+parallel_tp2 <- fa.parallel(wb_tp2, fm="ml", fa="fa") #parallel analysis, maximum likelihood, factor analysis
+# parallel analysis suggests 8 factors
+vss_tp2 <- vss(wb_tp2, n = 10, rotate = "none", n.obs = 1028)
+plot(vss_tp2$map, type = "b", pch=1, 
+     main="Minimum Average Partial", ylab = "Average Partial Correlation", xlab = "Number of Factors")
+# vss suggests 1 factors for complexity of 1, 
+# vss suggests 10 factors for complexity of 2
+# MAP suggests 3 factors
+
+plot(parallel_tp2$fa.values, type="b", pch=20, 
+     main="Scree Plot", ylab= "Factor Eigenvalues", xlab="Number of Factors") #the scree plot looks like 4 factors
+parallel_tp2$fa.values #eigen values
+
+#the Scree Plot looks like there are 3-6 factors
+
+# factors solutions criteria: #
+# at least 3 items per factor #
+# factor loading above ~ 0.4 #
+# cross loadings below 0.3, but 0.2 gap b/w primary loadings and cross loadings #
+# prioritize simple structure (over var explained) #
+
+# testing for simple structure, 3 factors#
+
+fa3_tp2 <- fa(wb_tp2, nfactors = 3, rotate = "none", fm = "ml") 
+fa3_oblimin_tp2 <- fa(wb_tp2, nfactors = 3, rotate = "oblimin", fm = "ml")
+fa3_oblimin2_tp2 <- fa(wb_tp2[, -c(29)], nfactors = 3, rotate = "oblimin", fm = "ml") 
+fa3_oblimin3_tp2 <- fa(wb_tp2[, -c(29, 10)], nfactors = 3, rotate = "oblimin", fm = "ml") 
+fa3_oblimin4_tp2 <- fa(wb_tp2[, -c(29, 10, 6)], nfactors = 3, rotate = "oblimin", fm = "ml") 
+fa3_oblimin5_tp2 <- fa(wb_tp2[, -c(29, 10, 6, 22)], nfactors = 3, rotate = "oblimin", fm = "ml") 
+fa3_oblimin6_tp2 <- fa(wb_tp2[, -c(29, 10, 6, 22, 28)], nfactors = 3, rotate = "oblimin", fm = "ml") 
+fa3_oblimin7_tp2 <- fa(wb_tp2[, -c(29, 10, 6, 22, 28, 26)], nfactors = 3, rotate = "oblimin", fm = "ml") 
+
+#
+#
+#
+
+fa4_tp2 <- fa(wb_tp2, nfactors = 4, rotate = "none", fm = "ml")
+fa4_oblimin_tp2 <- fa(wb_tp2, nfactors = 4, rotate = "oblimin", fm = "ml")
+fa4_oblimin2_tp2 <- fa(wb_tp2[, -c(29)], nfactors = 4, rotate = "oblimin", fm = "ml") #-wb29
+fa4_oblimin3_tp2 <- fa(wb_tp2[, -c(29, 10)], nfactors = 4, rotate = "oblimin", fm = "ml") #-wb6
+fa4_oblimin4_tp2 <- fa(wb_tp2[, -c(29, 10, 25)], nfactors = 4, rotate = "oblimin", fm = "ml") #-wb6
+fa4_oblimin5_tp2 <- fa(wb_tp2[, -c(29, 10, 25, 6)], nfactors = 4, rotate = "oblimin", fm = "ml") #-wb6
+fa4_oblimin6_tp2 <- fa(wb_tp2[, -c(29, 10, 25, 6, 7)], nfactors = 4, rotate = "oblimin", fm = "ml") #-wb6
+fa4_oblimin7_tp2 <- fa(wb_tp2[, -c(29, 10, 25, 6, 7, 18)], nfactors = 4, rotate = "oblimin", fm = "ml") #-wb6
+#report fit indices from read-out
+
+a1.2 <- alpha(wb_tp2[,c(3,5,4,1,2)])
+a2.2 <- alpha(wb_tp2[,c(20, 27, 23,21,8,13,19,12,15,16,11)])
+a3.2 <- alpha(wb_tp2[,c(22,26,28)])
+a4.2 <- alpha(wb_tp2[,c(17,9,24,14)])
+
+cfi2 <- 1 - ((fa4_oblimin7_tp2$STATISTIC - fa4_oblimin7_tp2$dof)/(fa4_oblimin7_tp2$null.chisq - fa4_oblimin7_tp2$null.dof))
+
+factor.congruence(fa4_oblimin7$loadings, fa4_oblimin7_tp2$loadings) # the model fits both datasets very well
